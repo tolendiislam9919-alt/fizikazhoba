@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D зертхана · Шеңбер бойымен қозғалыс</title>
+<style>
+  :root{
+    --paper:#f6f1e7; --card:#fbf8f1; --ink:#22211f; --ink2:#5a554c; --line:#d9d0bf;
+    --teal:#1f5e63; --teal2:#e3eeee; --brick:#b5412a; --gold:#a8791a; --ok:#2e7d4f; --okbg:#e2f1e6; --badbg:#f8e3df;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);
+       font:15px/1.5 "Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+       background-image:radial-gradient(rgba(0,0,0,.035) 1px,transparent 1px);background-size:22px 22px}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px 14px 50px}
+
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+         border-bottom:3px double var(--ink);padding-bottom:8px;margin-bottom:14px;flex-wrap:wrap}
+  header h1{margin:0;font-size:21px;font-weight:600}
+  header h1 small{display:block;font-size:12px;color:var(--ink2);font-weight:400;letter-spacing:.8px;
+                  text-transform:uppercase;margin-bottom:3px}
+  .stamp{border:2px solid var(--brick);color:var(--brick);border-radius:6px;padding:4px 10px;font-size:11.5px;
+         font-weight:700;letter-spacing:1px;text-transform:uppercase;transform:rotate(-2deg);background:rgba(255,255,255,.45)}
+
+  .grid{display:grid;grid-template-columns:1fr 330px;gap:14px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+        box-shadow:0 1px 0 rgba(0,0,0,.04),0 6px 18px -14px rgba(40,30,10,.3)}
+  .card h2{margin:0 0 8px;font-size:15px;color:var(--teal);letter-spacing:.3px;
+           border-bottom:1px solid var(--line);padding-bottom:5px}
+  .card h3{margin:12px 0 5px;font-size:13.5px;color:var(--brick)}
+
+  #stage{position:relative;padding:0;overflow:hidden}
+  canvas{display:block;width:100%;height:auto;background:linear-gradient(#eef3f4,#dfe7e6 60%,#d6ddd6)}
+  .hud{position:absolute;left:10px;top:10px;font-size:12px;color:#123;background:rgba(255,255,255,.78);
+       border:1px solid var(--line);border-radius:8px;padding:6px 9px;line-height:1.45;pointer-events:none}
+  .hud b{font-variant-numeric:tabular-nums}
+  .badge{position:absolute;right:10px;top:10px;font-size:13px;font-weight:700;padding:6px 12px;border-radius:99px;
+         border:2px solid;background:rgba(255,255,255,.85)}
+  .badge.ok{color:var(--ok);border-color:var(--ok)}
+  .badge.bad{color:var(--brick);border-color:var(--brick)}
+  .hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:#456;background:rgba(255,255,255,.7);
+        padding:3px 8px;border-radius:6px}
+
+  label.row{display:block;font-size:13px;margin:10px 0 2px;color:var(--ink2)}
+  label.row b{color:var(--ink);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--teal)}
+  .btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+  button{font:600 13px/1 inherit;padding:8px 12px;border-radius:8px;border:1.5px solid var(--ink);
+         background:var(--card);color:var(--ink);cursor:pointer;transition:.12s}
+  button:hover{background:var(--ink);color:var(--paper)}
+  button.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  button.primary:hover{background:#174a4e}
+  button.brick{background:var(--brick);border-color:var(--brick);color:#fff}
+  button.brick:hover{background:#95331f}
+  button.small{padding:5px 9px;font-size:12px}
+  select{font:inherit;padding:6px 8px;border:1.5px solid var(--line);border-radius:7px;background:#fff;width:100%}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;margin:6px 0;cursor:pointer}
+  .chk input{width:16px;height:16px;accent-color:var(--teal)}
+
+  .read{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .r{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 8px}
+  .r span{display:block;font-size:11px;color:var(--ink2)}
+  .r b{font-size:15px;font-variant-numeric:tabular-nums}
+  .r.hl{background:var(--teal2);border-color:var(--teal)}
+
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+  th,td{border:1px solid var(--line);padding:5px 7px;text-align:center}
+  th{background:var(--teal2);font-weight:600}
+  td input{width:72px;padding:4px;border:1px solid var(--line);border-radius:5px;text-align:center;font:inherit}
+  tr.good td{background:var(--okbg)}
+  tr.bad td{background:var(--badbg)}
+  .q{margin:9px 0}
+  .q p{margin:0 0 4px;font-weight:600;font-size:13.5px}
+  .q label{display:block;font-size:13px;margin:2px 0;cursor:pointer}
+  .q label input{margin-right:6px;accent-color:var(--teal)}
+  .verdict{margin-top:8px;padding:8px 10px;border-radius:8px;font-size:13px;display:none}
+  .verdict.show{display:block}
+  .verdict.ok{background:var(--okbg);border-left:4px solid var(--ok)}
+  .verdict.bad{background:var(--badbg);border-left:4px solid var(--brick)}
+  .formula{background:#fff;border-left:3px solid var(--teal);border-radius:0 6px 6px 0;padding:6px 10px;
+           margin:6px 0;font-family:Georgia,"Times New Roman",serif;font-size:14.5px}
+  .note{font-size:12.5px;color:var(--ink2)}
+  ol.steps{margin:6px 0 0 18px;padding:0;font-size:13.5px}
+  ol.steps li{margin-bottom:5px}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+  @media print{ body{background:#fff} .noprint{display:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1><small>Физика · 9 сынып · виртуалды зертхана</small>Шеңбер бойымен қозғалыс. Центрге тартқыш үдеу</h1>
+  </div>
+  <div class="stamp">Су неге төгілмейді?</div>
+</header>
+
+<div class="grid">
+
+  <!-- ============ 3D сахна ============ -->
+  <div>
+    <div class="card" id="stage">
+      <canvas id="cv"></canvas>
+      <div class="hud" id="hud"></div>
+      <div class="badge ok" id="badge">Су төгілмейді</div>
+      <div class="hint">Сахнаны айналдыру үшін тінтуірмен сүйреңіз</div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>Зертханалық тапсырма</h2>
+      <ol class="steps">
+        <li><b>1-тәжірибе.</b> Радиусты <b>R = 1,0 м</b> етіп қой, жиілікті үлкейтіп, суды төгілмейтін етіп айналдыр. Сосын жиілікті <b>ақырын азайта</b> отырып, су дәл төгіле бастайтын сәтті тап. Ол кездегі периодты <i>T</i> кестеге жаз.</li>
+        <li>Осы периодтан жылдамдықты есепте: <i>υ</i> = 2π<i>R</i>/<i>T</i>, оны теориялық <i>υ</i><sub>min</sub> = √(<i>gR</i>) мәнімен салыстыр.</li>
+        <li><b>2, 3-тәжірибе.</b> Сол әрекетті <b>R = 0,6 м</b> және <b>R = 1,4 м</b> үшін қайтала.</li>
+        <li>Кестені толтырып, «Тексеру» түймесін бас. Соңында қорытынды жаз.</li>
+      </ol>
+      <table id="labtable">
+        <thead><tr><th>№</th><th>R, м</th><th>Өлшенген T, с</th><th>υ = 2πR/T, м/с</th><th>υ<sub>min</sub> = √(gR)</th><th>Ауытқу, %</th></tr></thead>
+        <tbody>
+          <tr data-r="0.6"><td>1</td><td>0,6</td><td><input type="number" step="0.01" placeholder="—"></td><td class="c1">—</td><td class="c2">—</td><td class="c3">—</td></tr>
+          <tr data-r="1.0"><td>2</td><td>1,0</td><td><input type="number" step="0.01" placeholder="—"></td><td class="c1">—</td><td class="c2">—</td><td class="c3">—</td></tr>
+          <tr data-r="1.4"><td>3</td><td>1,4</td><td><input type="number" step="0.01" placeholder="—"></td><td class="c1">—</td><td class="c2">—</td><td class="c3">—</td></tr>
+        </tbody>
+      </table>
+      <div class="btns noprint">
+        <button class="primary" id="btnCheck">Тексеру</button>
+        <button class="small" id="btnFill">Ағымдағы T-ны кестеге жазу</button>
+        <button class="small" id="btnClear">Тазалау</button>
+      </div>
+      <div class="verdict" id="labVerdict"></div>
+
+      <h3>Бақылау сұрақтары</h3>
+      <div class="q" data-a="b">
+        <p>1. Шелектегі су ең жоғарғы нүктеде неге төгілмейді?</p>
+        <label><input type="radio" name="q1" value="a"> Ауырлық күші сол сәтте жоғалады</label>
+        <label><input type="radio" name="q1" value="b"> Ауырлық күші судың центрге тартқыш үдеуін тудыруға толық жұмсалады</label>
+        <label><input type="radio" name="q1" value="c"> Ауа қысымы суды шелекте ұстап тұрады</label>
+      </div>
+      <div class="q" data-a="c">
+        <p>2. Радиусты 4 есе арттырсақ, судың төгілмеуі үшін керекті ең кіші жылдамдық қалай өзгереді?</p>
+        <label><input type="radio" name="q2" value="a"> 4 есе кемиді</label>
+        <label><input type="radio" name="q2" value="b"> 4 есе артады</label>
+        <label><input type="radio" name="q2" value="c"> 2 есе артады</label>
+      </div>
+      <div class="q" data-a="a">
+        <p>3. Айдағы (g = 1,6 м/с²) тәжірибеде суды төгілмейтін етіп айналдыру Жердегіден…</p>
+        <label><input type="radio" name="q3" value="a"> оңайырақ — жылдамдық 2,5 есе аз болса да жетеді</label>
+        <label><input type="radio" name="q3" value="b"> қиынырақ — жылдамдық үлкен болуы керек</label>
+        <label><input type="radio" name="q3" value="c"> ешқандай айырмашылығы жоқ</label>
+      </div>
+      <div class="btns noprint"><button class="primary" id="btnQ">Жауаптарды тексеру</button></div>
+      <div class="verdict" id="qVerdict"></div>
+    </div>
+  </div>
+
+  <!-- ============ Басқару панелі ============ -->
+  <div>
+    <div class="card">
+      <h2>Басқару</h2>
+      <label class="row">Айналу жиілігі  <b><span id="vN">0,80</span> айн/с</b></label>
+      <input type="range" id="sN" min="0" max="180" value="80">
+      <label class="row">Шеңбер радиусы  <b><span id="vR">1,00</span> м</b></label>
+      <input type="range" id="sR" min="40" max="150" value="100">
+      <label class="row">Шелек + су массасы  <b><span id="vM">2,0</span> кг</b></label>
+      <input type="range" id="sM" min="5" max="50" value="20">
+      <label class="row">Аспан денесі (g)</label>
+      <select id="selG">
+        <option value="9.8" selected>Жер — g = 9,8 м/с²</option>
+        <option value="1.6">Ай — g = 1,6 м/с²</option>
+        <option value="3.7">Марс — g = 3,7 м/с²</option>
+      </select>
+
+      <label class="chk"><input type="checkbox" id="ckVec" checked> Күш пен үдеу векторлары</label>
+      <label class="chk"><input type="checkbox" id="ckPath" checked> Траектория (шеңбер)</label>
+      <label class="chk"><input type="checkbox" id="ckSlow"> Баяу қозғалыс (×0,3)</label>
+
+      <div class="btns">
+        <button class="primary" id="btnPlay">⏸ Тоқтату</button>
+        <button id="btnTop">Жоғарғы нүктеге</button>
+        <button class="brick" id="btnFillWater">Суды толтыру</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>Өлшеу тақтасы</h2>
+      <div class="read">
+        <div class="r"><span>Период T</span><b id="oT">—</b></div>
+        <div class="r"><span>Жылдамдық υ</span><b id="oV">—</b></div>
+        <div class="r hl"><span>Центрге тартқыш үдеу a</span><b id="oA">—</b></div>
+        <div class="r"><span>a / g</span><b id="oAg">—</b></div>
+        <div class="r"><span>υ<sub>min</sub> = √(gR)</span><b id="oVmin">—</b></div>
+        <div class="r"><span>T<sub>max</sub> = 2π√(R/g)</span><b id="oTmax">—</b></div>
+        <div class="r"><span>Жіптің керілуі (жоғарыда)</span><b id="oNtop">—</b></div>
+        <div class="r"><span>Жіптің керілуі (төменде)</span><b id="oNbot">—</b></div>
+      </div>
+      <div class="formula">υ = 2π<i>R</i>/<i>T</i> = ω<i>R</i>;&nbsp;&nbsp; <i>a</i> = υ²/<i>R</i> = ω²<i>R</i></div>
+      <div class="formula">Жоғарғы нүкте: <i>mg</i> + <i>N</i> = <i>m</i>υ²/<i>R</i><br>
+        <i>N</i> = 0 ⇒ <b>υ<sub>min</sub> = √(<i>gR</i>)</b></div>
+      <p class="note">Егер υ &lt; υ<sub>min</sub> болса, ауырлық күші керекті центрге тартқыш күштен артық болады да, су шелектен «қалып қояды» — төгіледі.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+"use strict";
+/* =======================================================================
+   3D зертхана: тік жазықтықта айналған шелектегі су.
+   Сыртқы кітапхана жоқ — қарапайым перспективалық проекция + canvas 2D.
+   ======================================================================= */
+
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let W = 0, H = 0, DPR = Math.min(2, window.devicePixelRatio || 1);
+
+function resize(){
+  const w = cv.parentElement.clientWidth;
+  const h = Math.max(340, Math.min(540, Math.round(w * 0.66)));
+  cv.width = w * DPR; cv.height = h * DPR;
+  cv.style.height = h + "px";
+  W = w; H = h;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+
+/* ---------- камера және проекция ---------- */
+const cam = { yaw: 0.55, pitch: 0.18, dist: 6.9, fov: 620 };
+function proj(p){
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  let x = p.x * cy - p.z * sy;
+  let z = p.x * sy + p.z * cy;
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  let y2 = p.y * cp - z * sp;
+  let z2 = p.y * sp + z * cp;
+  const zc = z2 + cam.dist;
+  const s = cam.fov / Math.max(0.35, zc);
+  return { X: W / 2 + x * s, Y: H * 0.71 - y2 * s, s: s, z: zc };
+}
+// тінтуірмен айналдыру
+let drag = null;
+cv.addEventListener("mousedown", e => drag = { x: e.clientX, y: e.clientY, yaw: cam.yaw, pitch: cam.pitch });
+window.addEventListener("mouseup", () => drag = null);
+window.addEventListener("mousemove", e => {
+  if(!drag) return;
+  cam.yaw = drag.yaw + (e.clientX - drag.x) * 0.006;
+  cam.pitch = Math.max(-0.05, Math.min(0.65, drag.pitch + (e.clientY - drag.y) * 0.004));
+});
+cv.addEventListener("touchmove", e => {
+  const t = e.touches[0];
+  if(!drag) { drag = { x: t.clientX, y: t.clientY, yaw: cam.yaw, pitch: cam.pitch }; return; }
+  cam.yaw = drag.yaw + (t.clientX - drag.x) * 0.006;
+  e.preventDefault();
+}, { passive:false });
+cv.addEventListener("touchend", () => drag = null);
+
+/* ---------- физика күйі ---------- */
+const S = {
+  n: 0.80,        // айналу жиілігі, айн/с
+  R: 1.00,        // радиус, м
+  m: 2.0,         // масса, кг
+  g: 9.8,
+  theta: -Math.PI / 2,   // бастапқыда төменгі нүкте
+  running: true,
+  slow: false,
+  water: 1.0,     // шелектегі судың мөлшері 0..1
+  drops: []       // төгілген тамшылар
+};
+const PIVOT = { x: 0, y: 0.55, z: 0 };   // иықтағы айналу центрі
+
+function omega(){ return 2 * Math.PI * S.n; }
+function speed(){ return omega() * S.R; }
+function acen(){ return omega() * omega() * S.R; }
+function vmin(){ return Math.sqrt(S.g * S.R); }
+
+/* ---------- геометрия көмекшілері ---------- */
+function bucketPos(th){
+  return { x: PIVOT.x + S.R * Math.cos(th), y: PIVOT.y + S.R * Math.sin(th), z: 0 };
+}
+function poly(pts, fill, stroke, lw){
+  ctx.beginPath();
+  pts.forEach((p, i) => { const q = proj(p); i ? ctx.lineTo(q.X, q.Y) : ctx.moveTo(q.X, q.Y); });
+  ctx.closePath();
+  if(fill){ ctx.fillStyle = fill; ctx.fill(); }
+  if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1.2; ctx.stroke(); }
+}
+function line3(a, b, color, lw){
+  const p = proj(a), q = proj(b);
+  ctx.beginPath(); ctx.moveTo(p.X, p.Y); ctx.lineTo(q.X, q.Y);
+  ctx.strokeStyle = color; ctx.lineWidth = lw || 1.5; ctx.stroke();
+}
+function arrow3(a, b, color, label){
+  const p = proj(a), q = proj(b);
+  ctx.beginPath(); ctx.moveTo(p.X, p.Y); ctx.lineTo(q.X, q.Y);
+  ctx.strokeStyle = color; ctx.lineWidth = 2.4; ctx.stroke();
+  const ang = Math.atan2(q.Y - p.Y, q.X - p.X), hl = 9;
+  ctx.beginPath();
+  ctx.moveTo(q.X, q.Y);
+  ctx.lineTo(q.X - hl * Math.cos(ang - 0.4), q.Y - hl * Math.sin(ang - 0.4));
+  ctx.lineTo(q.X - hl * Math.cos(ang + 0.4), q.Y - hl * Math.sin(ang + 0.4));
+  ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+  if(label){
+    const dx = (q.X - p.X), dy = (q.Y - p.Y), L = Math.hypot(dx, dy) || 1;
+    const lx = q.X + dx / L * 11 - 5, ly = q.Y + dy / L * 11 + 5;
+    ctx.font = "italic bold 13.5px Georgia, serif";
+    ctx.lineWidth = 3.2; ctx.strokeStyle = "rgba(255,255,255,.9)";
+    ctx.strokeText(label, lx, ly);
+    ctx.fillStyle = color; ctx.fillText(label, lx, ly);
+  }
+}
+function ball(c, r, fill, stroke){
+  const p = proj(c);
+  ctx.beginPath(); ctx.arc(p.X, p.Y, Math.max(1, r * p.s), 0, 6.2832);
+  ctx.fillStyle = fill; ctx.fill();
+  if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+}
+
+/* ---------- сахнаны салу ---------- */
+const GROUND = -1.15;
+
+function drawGround(){
+  for(let i = -4; i <= 4; i++){
+    line3({x:i*0.8, y:GROUND, z:-3.2}, {x:i*0.8, y:GROUND, z:3.2}, "rgba(80,90,80,.18)", 1);
+    line3({x:-3.2, y:GROUND, z:i*0.8}, {x:3.2, y:GROUND, z:i*0.8}, "rgba(80,90,80,.18)", 1);
+  }
+}
+function drawPerson(){
+  const c = "#5d6b6b", c2 = "#47575a";
+  // аяқтар
+  line3({x:-0.13,y:GROUND,z:0}, {x:-0.06,y:-0.30,z:0}, c2, 7);
+  line3({x: 0.13,y:GROUND,z:0}, {x: 0.06,y:-0.30,z:0}, c2, 7);
+  // дене
+  poly([{x:-0.17,y:-0.30,z:-0.09},{x:0.17,y:-0.30,z:-0.09},{x:0.15,y:0.42,z:-0.09},{x:-0.15,y:0.42,z:-0.09}], "#7d8c8c", c, 1.2);
+  poly([{x:-0.17,y:-0.30,z:0.09},{x:0.17,y:-0.30,z:0.09},{x:0.15,y:0.42,z:0.09},{x:-0.15,y:0.42,z:0.09}], "#93a2a2", c, 1.2);
+  poly([{x:0.17,y:-0.30,z:-0.09},{x:0.17,y:-0.30,z:0.09},{x:0.15,y:0.42,z:0.09},{x:0.15,y:0.42,z:-0.09}], "#6b7a7a", c, 1.2);
+  // бас
+  ball({x:0, y:0.60, z:0}, 0.14, "#d9c3a5", "#a98f6d");
+  // қол — жіп бағытына қарай
+  const d = { x: Math.cos(S.theta), y: Math.sin(S.theta) };
+  line3({x:0.10,y:0.42,z:0}, {x:PIVOT.x + 0.28*d.x, y:PIVOT.y + 0.28*d.y, z:0}, "#d9c3a5", 6);
+}
+function drawPath(){
+  ctx.beginPath();
+  for(let i = 0; i <= 72; i++){
+    const th = i / 72 * 6.2832, p = proj(bucketPos(th));
+    i ? ctx.lineTo(p.X, p.Y) : ctx.moveTo(p.X, p.Y);
+  }
+  ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(31,94,99,.45)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.setLineDash([]);
+}
+function drawBucket(){
+  const th = S.theta;
+  const u  = { x: Math.cos(th), y: Math.sin(th) };        // центрден сыртқа (шелектің «түбі» жағы)
+  const t  = { x: -Math.sin(th), y: Math.cos(th) };       // жанама
+  const c  = bucketPos(th);
+  const rIn = -0.16, rOut = 0.34;                          // ауыз және түп (радиалды ығысу)
+  const wIn = 0.21, wOut = 0.15;                           // ауыз бен түптің жарты ені
+  const dIn = 0.21, dOut = 0.15;                           // тереңдігі (z)
+
+  function P(r, a, b){ return { x: c.x + u.x*r + t.x*a, y: c.y + u.y*r + t.y*a, z: b }; }
+  const A1 = P(rIn,  wIn, -dIn), B1 = P(rIn,  wIn,  dIn), C1 = P(rIn, -wIn,  dIn), D1 = P(rIn, -wIn, -dIn);
+  const A2 = P(rOut, wOut, -dOut), B2 = P(rOut, wOut, dOut), C2 = P(rOut, -wOut, dOut), D2 = P(rOut, -wOut, -dOut);
+
+  // су (түбіне тірелген қабат)
+  if(S.water > 0.02){
+    const k = 0.15 + 0.72 * S.water;     // су деңгейі
+    const rw = rOut + (rIn - rOut) * k;
+    const ww = wOut + (wIn - wOut) * k, dw = dOut + (dIn - dOut) * k;
+    const W1 = P(rw, ww, -dw), W2 = P(rw, ww, dw), W3 = P(rw, -ww, dw), W4 = P(rw, -ww, -dw);
+    poly([A2, B2, W2, W1], "rgba(70,150,200,.75)", "rgba(30,90,130,.9)", 1);
+    poly([B2, C2, W3, W2], "rgba(90,170,215,.75)", "rgba(30,90,130,.9)", 1);
+    poly([W1, W2, W3, W4], "rgba(120,195,230,.9)", "rgba(30,90,130,.9)", 1.2);
+  }
+  // шелектің қабырғалары
+  poly([A1, B1, B2, A2], "rgba(190,175,150,.9)", "#7a6a50", 1.3);
+  poly([B1, C1, C2, B2], "rgba(205,190,165,.9)", "#7a6a50", 1.3);
+  poly([D1, A1, A2, D2], "rgba(170,155,132,.9)", "#7a6a50", 1.3);
+  poly([A2, B2, C2, D2], "rgba(150,136,115,.95)", "#7a6a50", 1.3);     // түбі
+  poly([A1, B1, C1, D1], "rgba(120,105,85,.35)", "#6b5c45", 1.4);      // ауызы
+  // жіп
+  line3(PIVOT, P(rIn, 0, 0), "#54483a", 2);
+}
+function drawDrops(){
+  S.drops.forEach(d => ball({x:d.x, y:d.y, z:d.z}, 0.035, "rgba(70,150,200,.95)", "rgba(20,70,110,.9)"));
+}
+function drawVectors(){
+  const th = S.theta, c = bucketPos(th);
+  const inw = { x: -Math.cos(th), y: -Math.sin(th) };
+  const tan = { x: -Math.sin(th), y:  Math.cos(th) };
+  const v = speed(), a = acen();
+  const kv = Math.min(0.55, 0.11 * v), ka = Math.min(0.6, 0.035 * a);
+  // υ — жанама
+  arrow3(c, { x: c.x + tan.x * kv, y: c.y + tan.y * kv, z: 0 }, "#b5412a", "υ");
+  // a — центрге
+  arrow3(c, { x: c.x + inw.x * ka, y: c.y + inw.y * ka, z: 0 }, "#1f5e63", "a");
+  // mg — төмен
+  arrow3(c, { x: c.x, y: c.y - 0.34, z: 0 }, "#333", "mg");
+  // N — шелек түбінің суға әсері (центрге қарай)
+  const Nn = S.m * (a - S.g * Math.sin(th));
+  if(S.water > 0.02 && Nn > 0){
+    const kn = Math.min(0.5, 0.012 * Nn);
+    arrow3({x:c.x + (-inw.x)*0.30, y:c.y + (-inw.y)*0.30, z:0},
+           {x:c.x + (-inw.x)*0.30 + inw.x*kn, y:c.y + (-inw.y)*0.30 + inw.y*kn, z:0}, "#a8791a", "N");
+  }
+}
+
+/* ---------- жаңарту ---------- */
+let last = performance.now();
+function update(dt){
+  if(S.running) S.theta += omega() * dt;
+  if(S.theta > Math.PI * 4) S.theta -= Math.PI * 4;
+
+  // су төгілу шарты: N = m(ω²R − g·sinθ) < 0
+  const sinT = Math.sin(S.theta);
+  const Nn = acen() - S.g * sinT;
+  if(S.running && S.water > 0 && Nn < 0 && sinT > 0){
+    S.water = Math.max(0, S.water - dt * 1.4);
+    if(S.drops.length < 260){
+      const c = bucketPos(S.theta);
+      const tan = { x: -Math.sin(S.theta), y: Math.cos(S.theta) };
+      for(let i = 0; i < 2; i++){
+        S.drops.push({
+          x: c.x + (Math.random()-0.5)*0.2, y: c.y + (Math.random()-0.5)*0.12, z: (Math.random()-0.5)*0.28,
+          vx: tan.x * speed() * 0.55 + (Math.random()-0.5)*0.3,
+          vy: tan.y * speed() * 0.55 + (Math.random()-0.5)*0.3,
+          vz: (Math.random()-0.5)*0.4
+        });
+      }
+    }
+  }
+  // тамшылар
+  for(let i = S.drops.length - 1; i >= 0; i--){
+    const d = S.drops[i];
+    d.vy -= S.g * dt;
+    d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
+    if(d.y < GROUND){ S.drops.splice(i, 1); }
+  }
+}
+
+function frame(now){
+  let dt = Math.min(0.033, (now - last) / 1000); last = now;
+  if(S.slow) dt *= 0.3;
+  update(dt);
+
+  ctx.clearRect(0, 0, W, H);
+  drawGround();
+  if(document.getElementById("ckPath").checked) drawPath();
+  drawPerson();
+  drawBucket();
+  drawDrops();
+  if(document.getElementById("ckVec").checked) drawVectors();
+  refreshHUD();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- көрсеткіштер ---------- */
+const $ = id => document.getElementById(id);
+function fmt(x, d){ return (Math.abs(x) < 1e4 ? x.toFixed(d) : x.toExponential(1)).replace(".", ","); }
+
+function refreshHUD(){
+  const v = speed(), a = acen(), T = S.n > 0.001 ? 1 / S.n : Infinity;
+  const NtopN = S.m * (a - S.g), NbotN = S.m * (a + S.g);
+  $("oT").textContent   = isFinite(T) ? fmt(T, 2) + " с" : "—";
+  $("oV").textContent   = fmt(v, 2) + " м/с";
+  $("oA").textContent   = fmt(a, 1) + " м/с²";
+  $("oAg").textContent  = fmt(a / S.g, 2);
+  $("oVmin").textContent = fmt(vmin(), 2) + " м/с";
+  $("oTmax").textContent = fmt(2 * Math.PI * Math.sqrt(S.R / S.g), 2) + " с";
+  $("oNtop").textContent = (NtopN > 0 ? fmt(NtopN, 1) : "0") + " Н";
+  $("oNbot").textContent = fmt(NbotN, 1) + " Н";
+
+  const deg = ((S.theta * 180 / Math.PI) % 360 + 360) % 360;
+  $("hud").innerHTML =
+    "θ = <b>" + deg.toFixed(0) + "°</b> &nbsp;·&nbsp; υ = <b>" + fmt(v, 2) + "</b> м/с<br>" +
+    "a = υ²/R = <b>" + fmt(a, 1) + "</b> м/с² = <b>" + fmt(a / S.g, 2) + "</b> g<br>" +
+    "υ<sub>min</sub> = √(gR) = <b>" + fmt(vmin(), 2) + "</b> м/с";
+
+  const b = $("badge"), safe = v >= vmin();
+  if(S.water < 0.03){ b.className = "badge bad"; b.textContent = "Су төгіліп кетті"; }
+  else if(safe){ b.className = "badge ok"; b.textContent = "Су төгілмейді  (υ ≥ υmin)"; }
+  else { b.className = "badge bad"; b.textContent = "Жылдамдық аз — су төгіледі"; }
+}
+
+/* ---------- басқару элементтері ---------- */
+$("sN").oninput = e => { S.n = e.target.value / 100; $("vN").textContent = fmt(S.n, 2); };
+$("sR").oninput = e => { S.R = e.target.value / 100; $("vR").textContent = fmt(S.R, 2); };
+$("sM").oninput = e => { S.m = e.target.value / 10;  $("vM").textContent = fmt(S.m, 1); };
+$("selG").onchange = e => { S.g = parseFloat(e.target.value); };
+$("ckSlow").onchange = e => { S.slow = e.target.checked; };
+$("btnPlay").onclick = e => {
+  S.running = !S.running;
+  e.target.textContent = S.running ? "⏸ Тоқтату" : "▶ Жалғастыру";
+};
+$("btnTop").onclick = () => { S.theta = Math.PI / 2; S.running = false; $("btnPlay").textContent = "▶ Жалғастыру"; };
+$("btnFillWater").onclick = () => { S.water = 1.0; S.drops.length = 0; };
+
+/* ---------- зертханалық кесте ---------- */
+$("btnFill").onclick = () => {
+  const T = S.n > 0.001 ? 1 / S.n : 0;
+  let best = null, bd = 9;
+  document.querySelectorAll("#labtable tbody tr").forEach(tr => {
+    const d = Math.abs(parseFloat(tr.dataset.r) - S.R);
+    if(d < bd){ bd = d; best = tr; }
+  });
+  if(best && T) best.querySelector("input").value = T.toFixed(2);
+};
+$("btnClear").onclick = () => {
+  document.querySelectorAll("#labtable input").forEach(i => i.value = "");
+  document.querySelectorAll("#labtable tbody tr").forEach(tr => { tr.className = ""; tr.querySelectorAll(".c1,.c2,.c3").forEach(c => c.textContent = "—"); });
+  $("labVerdict").className = "verdict";
+};
+$("btnCheck").onclick = () => {
+  let done = 0, good = 0;
+  document.querySelectorAll("#labtable tbody tr").forEach(tr => {
+    const R = parseFloat(tr.dataset.r);
+    const T = parseFloat((tr.querySelector("input").value || "").replace(",", "."));
+    const vt = Math.sqrt(S.g * R);
+    tr.querySelector(".c2").textContent = fmt(vt, 2);
+    if(!T || T <= 0){ tr.className = ""; tr.querySelector(".c1").textContent = "—"; tr.querySelector(".c3").textContent = "—"; return; }
+    done++;
+    const v = 2 * Math.PI * R / T;
+    const err = Math.abs(v - vt) / vt * 100;
+    tr.querySelector(".c1").textContent = fmt(v, 2);
+    tr.querySelector(".c3").textContent = fmt(err, 0) + " %";
+    if(err <= 15){ tr.className = "good"; good++; } else tr.className = "bad";
+  });
+  const el = $("labVerdict");
+  if(!done){ el.className = "verdict bad show"; el.innerHTML = "Кестеге кем дегенде бір өлшеу нәтижесін жаз."; return; }
+  if(good === done){
+    el.className = "verdict ok show";
+    el.innerHTML = "<b>Тамаша!</b> Өлшеген жылдамдығың теориялық υ<sub>min</sub> = √(gR) мәнімен 15 % дәлдікте сәйкес келді. Демек шелектегі су ең жоғарғы нүктеде дәл ауырлық күші центрге тартқыш үдеуді толық қамтамасыз еткенде ғана төгілмейді.";
+  } else {
+    el.className = "verdict bad show";
+    el.innerHTML = "Кейбір жолда ауытқу 15 %-дан көп. Тәжірибені қайтала: жиілікті <b>ақырын</b> азайтып, судың дәл төгіле бастаған сәтіндегі периодты ал (T = 1/n).";
+  }
+};
+$("btnQ").onclick = () => {
+  let ok = 0, tot = 0;
+  document.querySelectorAll(".q").forEach(q => {
+    tot++;
+    const sel = q.querySelector("input:checked");
+    q.style.background = "";
+    if(sel && sel.value === q.dataset.a){ ok++; q.style.background = "rgba(226,241,230,.9)"; }
+    else if(sel){ q.style.background = "rgba(248,227,223,.9)"; }
+  });
+  const el = $("qVerdict");
+  el.className = "verdict " + (ok === tot ? "ok" : "bad") + " show";
+  el.innerHTML = "<b>" + ok + " / " + tot + "</b> дұрыс." +
+    (ok === tot ? " Жарайсың — тақырыпты меңгердің!" : " Қате белгіленген сұрақты қайта оқып, зертханада тексеріп көр.");
+};
+
+/* ---------- іске қосу ---------- */
+resize();
+$("vN").textContent = fmt(S.n, 2);
+$("vR").textContent = fmt(S.R, 2);
+$("vM").textContent = fmt(S.m, 1);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
